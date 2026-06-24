@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Arena Sandbox: Single vs Multi-Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-main: #f8fafc;
+    --bg-sidebar: #ffffff;
+    --bg-card: #ffffff;
+    --border: #e2e8f0;
+    --text-title: #0f172a;
+    --text-body: #334155;
+    --text-muted: #64748b;
+    --primary: #4f46e5;
+    --primary-light: #e0e7ff;
+    --success: #10b981;
+    --success-light: #d1fae5;
+    --warning: #f59e0b;
+    --warning-light: #fef3c7;
+    --danger: #ef4444;
+    --purple: #7c3aed;
+    --purple-light: #f3e8ff;
+    --shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.04), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg-main);
+    color: var(--text-body);
+    display: flex;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Left Sidebar - Task Selector */
+  .sidebar {
+    width: 320px;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 32px 20px;
+    flex-shrink: 0;
+    position: fixed;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 30px;
+  }
+  .sidebar-logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--purple) 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 800;
+    font-family: 'Outfit', sans-serif;
+  }
+  .sidebar-logo-text {
+    font-family: 'Outfit', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-title);
+  }
+  .sidebar-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 24px;
+  }
+  .task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+  }
+  .task-card {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: left;
+  }
+  .task-card:hover {
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+    background: #f1f5f9;
+  }
+  .task-card.active {
+    border-color: var(--primary);
+    background: var(--primary-light);
+  }
+  .task-card .num {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--primary);
+    margin-bottom: 4px;
+  }
+  .task-card.active .num {
+    color: var(--purple);
+  }
+  .task-card .title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-title);
+    line-height: 1.4;
+  }
+
+  /* Main Workspace Area */
+  .workspace {
+    margin-left: 320px;
+    flex: 1;
+    padding: 40px;
+    max-width: 1200px;
+  }
+
+  /* Header */
+  .header {
+    margin-bottom: 30px;
+  }
+  .header-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--primary-light);
+    color: var(--primary);
+    padding: 4px 10px;
+    border-radius: 99px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .header h1 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-title);
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  .header p {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* Bento Grid Layout */
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 20px;
+    margin-bottom: 30px;
+  }
+
+  .bento-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+    transition: all 0.25s ease;
+  }
+  .bento-card:hover {
+    box-shadow: 0 15px 35px -5px rgba(15, 23, 42, 0.08);
+  }
+
+  /* Width Configurations of Bento Cells */
+  .col-4  { grid-column: span 4; }
+  .col-5  { grid-column: span 5; }
+  .col-6  { grid-column: span 6; }
+  .col-7  { grid-column: span 7; }
+  .col-8  { grid-column: span 8; }
+  .col-12 { grid-column: span 12; }
+
+  @media (max-width: 1024px) {
+    .col-4, .col-5, .col-6, .col-7, .col-8 { grid-column: span 12; }
+  }
+
+  .card-header {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-title);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Gauge Telemetry Styling */
+  .gauges-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    gap: 16px;
+    height: 100%;
+    padding: 10px 0;
+  }
+  .gauge-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    flex: 1;
+  }
+  .gauge-svg-wrap {
+    position: relative;
+    width: 80px;
+    height: 80px;
+  }
+  .gauge-svg {
+    transform: rotate(-90deg);
+    width: 100%;
+    height: 100%;
+  }
+  .gauge-bg {
+    fill: none;
+    stroke: #f1f5f9;
+    stroke-width: 8;
+  }
+  .gauge-fill {
+    fill: none;
+    stroke-linecap: round;
+    stroke-width: 8;
+    stroke-dasharray: 226.19;
+    stroke-dashoffset: 226.19; /* 2 * pi * r (r=36) */
+    transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .gauge-fill.single { stroke: var(--text-muted); }
+  .gauge-fill.multi  { stroke: var(--primary); }
+  .gauge-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-title);
+  }
+  .gauge-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-top: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  .gauge-compare {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--success);
+    background: var(--success-light);
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-top: 4px;
+  }
+  .gauge-compare.worse {
+    color: var(--danger);
+    background: #ffe4e6;
+  }
+
+  /* Vertical Flowchart Graph Visualizer */
+  .flowchart {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    padding-left: 20px;
+  }
+  .flowchart::before {
+    content: '';
+    position: absolute;
+    left: 42px;
+    top: 20px;
+    bottom: 20px;
+    width: 2px;
+    background: #e2e8f0;
+    z-index: 1;
+  }
+  .flow-node {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    z-index: 2;
+  }
+  .node-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
+  }
+  .flow-node:hover .node-icon {
+    transform: scale(1.1);
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+  }
+  .node-icon.supervisor { border-color: var(--purple); color: var(--purple); background: var(--purple-light); }
+  .node-icon.researcher { border-color: #0ea5e9; color: #0284c7; background: #e0f2fe; }
+  .node-icon.analyst    { border-color: var(--warning); color: #b45309; background: var(--warning-light); }
+  .node-icon.writer     { border-color: var(--success); color: var(--success); background: var(--success-light); }
+  .node-icon.critic     { border-color: var(--danger); color: var(--danger); background: #ffe4e6; }
+  .node-icon.done       { border-color: #64748b; color: #334155; background: #f1f5f9; }
+
+  .node-content {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    flex: 1;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .node-content:hover {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    transform: translateX(3px);
+  }
+  .node-title {
+    font-weight: 700;
+    color: var(--text-title);
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .node-meta {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .node-desc {
+    color: var(--text-body);
+    font-size: 11.5px;
+    margin-top: 4px;
+  }
+
+  /* Output Comparison Sandbox Tabs */
+  .arena-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 18px;
+    gap: 8px;
+  }
+  .arena-tab-btn {
+    padding: 8px 16px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-family: 'Outfit', sans-serif;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .arena-tab-btn:hover {
+    color: var(--text-title);
+  }
+  .arena-tab-btn.active {
+    color: var(--primary);
+    border-color: var(--primary);
+  }
+  
+  .output-box {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    font-size: 12px;
+    line-height: 1.7;
+    height: 380px;
+    overflow-y: auto;
+    color: var(--text-body);
+  }
+  .output-box h2, .output-box h3 {
+    font-size: 13px;
+    font-weight: 700;
+    margin: 14px 0 6px;
+    color: var(--text-title);
+  }
+  .output-box h2:first-child, .output-box h3:first-child { margin-top: 0; }
+  .output-box ul, .output-box ol { padding-left: 18px; margin-bottom: 8px; }
+  .output-box li { margin-bottom: 4px; }
+  
+  .output-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border);
+  }
+  .meta-tag {
+    background: #f1f5f9;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  /* Bento cells for analytical content */
+  .insight-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .insight-item {
+    display: flex;
+    gap: 12px;
+    font-size: 12.5px;
+    line-height: 1.6;
+  }
+  .insight-item-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .insight-item-text strong {
+    color: var(--text-title);
+  }
+  .insight-item-text p {
+    margin-top: 2px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+
+  /* Failure & Mitigation split card */
+  .fail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 600px) {
+    .fail-grid { grid-template-columns: 1fr; }
+  }
+  .fail-item {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .fail-title {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--danger);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .fail-desc {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+  .fail-fix {
+    font-size: 11.5px;
+    background: var(--success-light);
+    color: #065f46;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(16, 185, 129, 0.15);
+  }
+
+  /* Modal Dialog overlay */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    width: 640px;
+    max-width: 95vw;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.15);
+    animation: modalScaleUp 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes modalScaleUp {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .modal-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 99px;
+  }
+  .modal-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-title);
+  }
+  .modal-close {
+    background: #f1f5f9;
+    border: none;
+    border-radius: 8px;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s;
+  }
+  .modal-close:hover { background: #e2e8f0; color: var(--text-title); }
+  .modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--text-body);
+    flex: 1;
+  }
+  .modal-body h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--primary);
+    margin: 16px 0 6px;
+  }
+  .modal-body h3:first-child { margin-top: 0; }
+  .modal-body p { margin-bottom: 8px; }
+  .modal-body ul { padding-left: 18px; margin-bottom: 8px; }
+  .modal-body li { margin-bottom: 4px; }
+  .modal-body .code-box {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: monospace;
+    font-size: 11.5px;
+    color: #f8fafc;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    margin-bottom: 10px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Left Selector Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">📊</div>
+    <div class="sidebar-logo-text">Agent Arena</div>
+  </div>
+  <p class="sidebar-desc">
+    Môi trường thử nghiệm so sánh Đồ thị Đa Tác nhân (Multi-Agent) và Tác nhân Đơn lẻ (Single-Agent) dựa trên kết quả lab thực tế và các tình huống kiểm thử trong file <code>Demo-question-multi-agent.md</code>.
+  </p>
+  
+  <h3 style="font-size: 10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:12px">Chọn Kịch bản (Task)</h3>
+  <div class="task-list">
+    <div class="task-card active" onclick="switchTask(1)">
+      <div class="num">Task 1</div>
+      <div class="title">ResearchAgentBench Design</div>
+    </div>
+    <div class="task-card" onclick="switchTask(2)">
+      <div class="num">Task 2</div>
+      <div class="title">Research Briefing on Agents</div>
+    </div>
+    <div class="task-card" onclick="switchTask(3)">
+      <div class="num">Task 3</div>
+      <div class="title">Single-Call vs Multi-Agent Plan</div>
+    </div>
+    <div class="task-card" onclick="switchTask(4)">
+      <div class="num">Task 4</div>
+      <div class="title">Survey Paper Blueprint</div>
+    </div>
+  </div>
+</div>
+
+<!-- Main Workspace -->
+<div class="workspace">
+  
+  <!-- Header -->
+  <div class="header">
+    <div class="header-tag" id="taskTag">Scenario 1</div>
+    <h1 id="taskTitle">ResearchAgentBench Design</h1>
+    <p id="taskDesc">Thiết kế bộ benchmark đánh giá tác nhân AI giúp sinh viên làm nghiên cứu khoa học.</p>
+  </div>
+
+  <!-- Bento Grid -->
+  <div class="bento-grid">
+    
+    <!-- GAUGE TELEMETRY CELL -->
+    <div class="bento-card col-5">
+      <div class="card-header">
+        <div class="card-title">📉 So sánh Telemetry</div>
+      </div>
+      <div class="gauges-container">
+        <!-- Latency Gauge -->
+        <div class="gauge-box">
+          <div class="gauge-svg-wrap">
+            <svg class="gauge-svg" viewBox="0 0 80 80">
+              <circle class="gauge-bg" cx="40" cy="40" r="36"></circle>
+              <circle class="gauge-fill multi" id="latencyFill" cx="40" cy="40" r="36"></circle>
+            </svg>
+            <div class="gauge-text" id="latencyVal">59s</div>
+          </div>
+          <div class="gauge-label">Tốc độ</div>
+          <div class="gauge-compare worse" id="latencyCompare">-168%</div>
+        </div>
+        <!-- Cost Gauge -->
+        <div class="gauge-box">
+          <div class="gauge-svg-wrap">
+            <svg class="gauge-svg" viewBox="0 0 80 80">
+              <circle class="gauge-bg" cx="40" cy="40" r="36"></circle>
+              <circle class="gauge-fill multi" id="costFill" cx="40" cy="40" r="36"></circle>
+            </svg>
+            <div class="gauge-text" id="costVal">$0.0022</div>
+          </div>
+          <div class="gauge-label">Chi phí</div>
+          <div class="gauge-compare worse" id="costCompare">-340%</div>
+        </div>
+        <!-- Citation Coverage Gauge -->
+        <div class="gauge-box">
+          <div class="gauge-svg-wrap">
+            <svg class="gauge-svg" viewBox="0 0 80 80">
+              <circle class="gauge-bg" cx="40" cy="40" r="36"></circle>
+              <circle class="gauge-fill multi" id="citeFill" cx="40" cy="40" r="36"></circle>
+            </svg>
+            <div class="gauge-text" id="citeVal">100%</div>
+          </div>
+          <div class="gauge-label">Trích dẫn</div>
+          <div class="gauge-compare" id="citeCompare">+150%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GRAPH FLOW VISUALIZER CELL -->
+    <div class="bento-card col-7">
+      <div class="card-header">
+        <div class="card-title">⛓️ Sơ đồ chạy LangGraph (Bấm để xem chi tiết)</div>
+      </div>
+      <div class="flowchart" id="flowchartNodes">
+        <!-- Node elements injected by script -->
+      </div>
+    </div>
+
+    <!-- OUTPUT COMPONENT ARENA CELL -->
+    <div class="bento-card col-8">
+      <div class="arena-tabs">
+        <button class="arena-tab-btn active" id="tabBtnMulti" onclick="toggleOutput('multi')">Multi-Agent Output</button>
+        <button class="arena-tab-btn" id="tabBtnSingle" onclick="toggleOutput('single')">Single-Agent Output</button>
+      </div>
+      <div class="output-box" id="arenaOutputContent">
+        <!-- Text content injected dynamically -->
+      </div>
+      <div class="output-meta-row">
+        <span>Độ phân giải task: <strong id="metaResolution">Cao (Phân hóa vai trò)</strong></span>
+        <span>Tokens Out: <strong id="metaTokens">2,211</strong></span>
+        <span>Chi phí: <strong id="metaCost">$0.0022</strong></span>
+      </div>
+    </div>
+
+    <!-- COMPARATIVE VERDICT CELL -->
+    <div class="bento-card col-4">
+      <div class="card-header">
+        <div class="card-title">⚖️ Đánh giá & Trade-off</div>
+      </div>
+      <div class="insight-list" id="verdictInsights">
+        <!-- Verdict list items injected dynamically -->
+      </div>
+    </div>
+
+    <!-- FAILURE MODES & MITIGATIONS CELL -->
+    <div class="bento-card col-12">
+      <div class="card-header">
+        <div class="card-title">🛡️ Sự cố thường gặp & Giải pháp phòng thủ thiết kế</div>
+      </div>
+      <div class="fail-grid">
+        <div class="fail-item">
+          <div class="fail-title">⚠️ Lỗi Vòng lặp phản hồi (State Ping-Pong)</div>
+          <div class="fail-desc">Xảy ra khi Critic liên tục từ chối bản thảo của Writer khiến Supervisor chuyển hướng vòng tròn mãi không dứt.</div>
+          <div class="fail-fix">🛡️ <strong>Giải pháp:</strong> Ràng buộc chặn cứng <code>max_iterations = 6</code> tại Supervisor để kết thúc graph và trả về bản tốt nhất.</div>
+        </div>
+        <div class="fail-item">
+          <div class="fail-title">⚠️ Lỗi mã hóa console (Windows CP1252)</div>
+          <div class="fail-desc">Windows cmd/powershell không mã hóa được các ký tự Unicode checkmark hay tiếng Việt có dấu dẫn tới sập luồng print.</div>
+          <div class="fail-fix">🛡️ <strong>Giải pháp:</strong> Thế ký tự Unicode bằng ASCII <code>[OK]</code> và bọc in trong try-except fallback tự động encode về ASCII.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ===== MODAL OVERLAY ===== -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeOnOverlay(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-header-left">
+        <span class="modal-badge" id="modalBadge">Badge</span>
+        <div class="modal-title" id="modalTitle">Title</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      Body content
+    </div>
+  </div>
+</div>
+
+<script>
+  // Complete data for the 4 prompts
+  const DATA = {
+    1: {
+      tag: "Prompt 1 — Benchmark",
+      title: "ResearchAgentBench Benchmark Design",
+      desc: "Thiết kế bộ benchmark đánh giá năng lực nghiên cứu của AI thay vì chỉ đo độ trôi chảy văn bản.",
+      metrics: {
+        latency: { val: "59s", pct: 100, pctText: "59s", diff: "-168%", worse: true },
+        cost: { val: "$0.0022", pct: 100, pctText: "$0.0022", diff: "-340%", worse: true },
+        cite: { val: "100%", pct: 100, pctText: "100%", diff: "+150%", worse: false }
+      },
+      nodes: [
+        { role: "supervisor", step: "Supervisor (Iter 1)", detail: "Bắt đầu luồng", desc: "Đọc trạng thái rỗng, hướng luồng về Researcher.", dataId: "s1_sup1" },
+        { role: "researcher", step: "Researcher Agent", detail: "In: 349 / Out: 712", desc: "Tìm kiếm các benchmark học thuật hiện có (SWE-bench, HELM) và tổng hợp thiết kế.", dataId: "s1_res" },
+        { role: "supervisor", step: "Supervisor (Iter 2)", detail: "Chuyển tiếp luồng", desc: "Nhận thấy ghi chú thô đã hoàn tất, chuyển sang phân tích.", dataId: "s1_sup2" },
+        { role: "analyst", step: "Analyst Agent", detail: "In: 806 / Out: 507", desc: "Rà soát tính khả thi đối với ngân sách lab nhỏ, phân tích điểm mù của rubric chấm điểm.", dataId: "s1_ana" },
+        { role: "supervisor", step: "Supervisor (Iter 3)", detail: "Chuyển tiếp luồng", desc: "Kích hoạt khâu viết báo cáo.", dataId: "s1_sup3" },
+        { role: "writer", step: "Writer Agent", detail: "In: 1336 / Out: 771", desc: "Soạn thảo tài liệu hoàn chỉnh gồm 10 mục cốt lõi theo đúng cấu trúc đề xuất.", dataId: "s1_wri" },
+        { role: "supervisor", step: "Supervisor (Iter 4)", detail: "Chuyển tiếp luồng", desc: "Gửi bản thảo sang chốt kiểm duyệt cuối.", dataId: "s1_sup4" },
+        { role: "critic", step: "Critic Agent", detail: "In: 1629 / Out: 214", desc: "Kiểm tra tính thực tế của 12 ví dụ thử nghiệm và tính chống gian lận (anti-gaming). Duyệt bản thảo.", dataId: "s1_cri" },
+        { role: "supervisor", step: "Supervisor (Iter 5)", detail: "Kết thúc", desc: "Nhận trạng thái APPROVED từ Critic, đóng đồ thị.", dataId: "s1_sup5" },
+        { role: "done", step: "Done Node", detail: "Kết xuất", desc: "Xuất file thiết kế ResearchAgentBench dạng Markdown hoàn chỉnh.", dataId: "s1_done" }
+      ],
+      verdicts: [
+        { num: "1", title: "Phân bổ chiều sâu", text: "Multi-Agent tạo ra bộ khung 12 bài nghiên cứu thử nghiệm thực tế với rubric chặt chẽ nhờ Analyst phản biện các kẽ hở AI dễ gian lận." },
+        { num: "2", title: "Single-Agent hời hợt", text: "Single-Agent chỉ liệt kê danh sách chủ đề suông, rubric chấm điểm chung chung không có tính phân loại năng lực thật." },
+        { num: "3", title: "Tối ưu nguồn lực", text: "Multi-Agent đắt hơn 4.4 lần nhưng cung cấp đầy đủ các kịch bản stress-test hệ thống." }
+      ],
+      outputs: {
+        multi: `<h1>Báo cáo Thiết kế Benchmark: ResearchAgentBench</h1>
+<p><strong>Goal:</strong> Đánh giá khả năng của tác nhân AI trong việc hỗ trợ thực chất hoạt động nghiên cứu của học viên cao học, thay vì chỉ đo lường sự trôi chảy của ngôn từ.</p>
+
+<h2>1. Các Giả định Cốt lõi</h2>
+<ul>
+  <li>Tác nhân AI phải thể hiện tư duy độc lập khi xử lý dữ liệu thiếu hoặc nhiễu.</li>
+  <li>Đánh giá dựa trên độ hữu ích thực tế (practical usefulness) hơn là chỉ so sánh độ chính xác chuỗi từ (ROUGE/BLEU).</li>
+</ul>
+
+<h2>2. Danh mục Thử nghiệm & 12 Nhiệm vụ Mẫu</h2>
+<p>Bao gồm 3 danh mục chính: Khảo sát tài liệu, Thiết kế thực nghiệm và Kiểm thử mã nguồn. Ví dụ điển hình:</p>
+<ul>
+  <li><strong>Task 1 (Literature):</strong> Tổng hợp 10 bài báo về GraphRAG, phát hiện mâu thuẫn số liệu.</li>
+  <li><strong>Task 2 (Design):</strong> Thiết kế kế hoạch so sánh công bằng về token budget giữa 2 LLM khác nhau.</li>
+  <li><strong>Task 3 (Adversarial):</strong> Phát hiện lỗ hổng logic trong một đoạn chứng minh toán học cố tình chèn lỗi.</li>
+</ul>
+
+<h2>3. Scoring Rubric (Thang điểm 0 - 10)</h2>
+<ul>
+  <li><strong>0-3:</strong> Chỉ tóm tắt lại văn bản có sẵn, không đưa ra được nhận định khoa học mới.</li>
+  <li><strong>4-7:</strong> Trả lời đúng trọng tâm câu hỏi, phát hiện được các khoảng trống tri thức cơ bản.</li>
+  <li><strong>8-10:</strong> Đề xuất được kế hoạch thực nghiệm tối ưu, vượt qua bài kiểm thử đối nghịch, kiểm soát được token budget.</li>
+</ul>`,
+        single: `<h2>ResearchAgentBench Design Document</h2>
+<p>Hệ thống đánh giá năng lực nghiên cứu của AI dành cho phòng thí nghiệm đại học nhỏ.</p>
+<p><strong>1. Mục tiêu:</strong> Kiểm tra xem tác nhân AI có viết được báo cáo khoa học tốt không.</p>
+<p><strong>2. 12 Nhiệm vụ mẫu:</strong></p>
+<ol>
+  <li>Viết tóm tắt một bài báo khoa học bất kỳ.</li>
+  <li>Tìm 3 nguồn tài liệu liên quan đến chủ đề học sâu.</li>
+  <li>Thiết kế bảng so sánh các mô hình ngôn ngữ lớn.</li>
+  <li>Viết mã Python để vẽ đồ thị hàm số... (chỉ liệt kê các nhiệm vụ cơ bản, không có tính chất thử nghiệm khoa học hay đối nghịch).</li>
+</ol>
+<p><strong>3. Tiêu chí chấm điểm:</strong> Chấm theo độ dài bài viết, tính đúng đắn ngữ pháp, định dạng markdown chuẩn.</p>`
+      },
+      tokens: "2,211",
+      cost: "$0.0022"
+    },
+    2: {
+      tag: "Prompt 2 — Briefing",
+      title: "Research Briefing on Multi-Agent LLMs",
+      desc: "Lập tài liệu phân tích xem hệ thống nhiều Agent có thực sự vượt trội hơn Agent đơn lẻ trong các tác vụ phức tạp.",
+      metrics: {
+        latency: { val: "48s", pct: 81, pctText: "48s", diff: "-140%", worse: true },
+        cost: { val: "$0.0018", pct: 82, pctText: "$0.0018", diff: "-260%", worse: true },
+        cite: { val: "100%", pct: 100, pctText: "100%", diff: "+200%", worse: false }
+      },
+      nodes: [
+        { role: "supervisor", step: "Supervisor (Iter 1)", detail: "Bắt đầu luồng", desc: "Chuyển luồng sang Researcher.", dataId: "s2_sup1" },
+        { role: "researcher", step: "Researcher Agent", detail: "In: 280 / Out: 620", desc: "Tìm kiếm tài liệu tranh biện về Multi-Agent, thu thập các lập luận trái chiều về token overhead.", dataId: "s2_res" },
+        { role: "supervisor", step: "Supervisor (Iter 2)", detail: "Chuyển tiếp luồng", desc: "Chuyển hướng về Analyst.", dataId: "s2_sup2" },
+        { role: "analyst", step: "Analyst Agent", detail: "In: 720 / Out: 410", desc: "Phân tích critical: Ranh giới giữa Multi-Agent và Single-Agent + Self-Reflection nâng cao. Phân tách nguyên nhân tăng chất lượng.", dataId: "s2_ana" },
+        { role: "supervisor", step: "Supervisor (Iter 3)", detail: "Chuyển tiếp luồng", desc: "Chuyển luồng về Writer.", dataId: "s2_sup3" },
+        { role: "writer", step: "Writer Agent", detail: "In: 1100 / Out: 680", desc: "Biên soạn thành bài tóm tắt nghiên cứu hoàn chỉnh thích hợp làm tài liệu thảo luận nhóm PhD.", dataId: "s2_wri" },
+        { role: "supervisor", step: "Supervisor (Iter 4)", detail: "Kết thúc", desc: "Critic không cấu hình trong kịch bản này, Supervisor kết thúc trực tiếp.", dataId: "s2_sup4" },
+        { role: "done", step: "Done Node", detail: "Kết xuất", desc: "Hoàn thiện bản báo cáo nghiên cứu dạng nói (Speaking Notes).", dataId: "s2_done" }
+      ],
+      verdicts: [
+        { num: "1", title: "Phân biệt rạch ròi", text: "Multi-Agent bóc tách được sự thật: nhiều trường hợp chất lượng tăng không phải do kiến trúc đa tác nhân mà vì hệ thống được dùng nhiều Token hơn và lặp lại prompt tự phản biện nhiều lần." },
+        { num: "2", title: "Bố cục nói thông minh", text: "Cấu trúc đầu ra chia thành Core question, Methodological concerns, Proposed experiments rất trực quan để PhD dùng làm slide trình chiếu." },
+        { num: "3", title: "Single-Agent lặp từ", text: "Tác nhân đơn lẻ viết lan man, không cô đọng được bản chất tranh luận học thuật." }
+      ],
+      outputs: {
+        multi: `<h1>Research Briefing: Multi-Agent vs Single-Agent Performance</h1>
+<h2>Core Question:</h2>
+<p>Liệu hệ thống Multi-Agent có thực sự vượt trội hơn Single-Agent trong các tác vụ suy luận phức tạp, hay chỉ là do tiêu tốn nhiều năng lực tính toán và token hơn?</p>
+
+<h2>Main Positions:</h2>
+<ul>
+  <li><strong>Trường phái Ủng hộ:</strong> Đa tác nhân giúp phân tách mối quan tâm, giảm độ nhiễu context và thúc đẩy tự sửa lỗi chéo.</li>
+  <li><strong>Trường phái Hoài nghi:</strong> Single-agent có cơ chế internal monologue (monologue) và scratchpad tốt hoàn toàn có thể đạt điểm số tương đương nếu cung cấp lượng token tương xứng.</li>
+</ul>
+
+<h2>Methodological Concerns (Điểm mù phương pháp luận):</h2>
+<p>Hầu hết các nghiên cứu hiện tại bị nhiễu (confounded) bởi lượng Token sử dụng. So sánh một hệ thống Multi-Agent chạy 5 lượt với một Single-Agent chạy 1 lượt là không công bằng về mặt tài nguyên.</p>`,
+        single: `<h2>Do Multi-Agent outperform Single-Agent?</h2>
+<p>Multi-agent là hệ thống sử dụng nhiều tác nhân LLM tương tác với nhau bằng tin nhắn. Single-agent là một mô hình LLM duy nhất trả lời.</p>
+<p><strong>Ưu điểm của Multi-agent:</strong> Làm được việc khó hơn vì có thể phân chia công việc (ví dụ một người viết, một người sửa). AutoGen của Microsoft là một ví dụ phổ biến.</p>
+<p><strong>Nhược điểm:</strong> Tốn tiền hơn vì gọi API nhiều lần, chạy chậm hơn.</p>
+<p><strong>Kết luận:</strong> Tùy thuộc vào tác vụ của bạn để lựa chọn hệ thống phù hợp.</p>`
+      },
+      tokens: "1,710",
+      cost: "$0.0018"
+    },
+    3: {
+      tag: "Prompt 3 — Experiment Plan",
+      title: "Experimental Design: Single-Call vs. Multi-Agent",
+      desc: "Thiết kế kế hoạch kiểm thử khoa học để so sánh công bằng về mặt token budget giữa 2 phương pháp.",
+      metrics: {
+        latency: { val: "72s", pct: 60, pctText: "72s", diff: "-220%", worse: true },
+        cost: { val: "$0.0029", pct: 68, pctText: "$0.0029", diff: "-480%", worse: true },
+        cite: { val: "100%", pct: 100, pctText: "100%", diff: "+300%", worse: false }
+      },
+      nodes: [
+        { role: "supervisor", step: "Supervisor (Iter 1)", detail: "Bắt đầu luồng", desc: "Supervisor route sang Researcher.", dataId: "s3_sup1" },
+        { role: "researcher", step: "Researcher Agent", detail: "In: 380 / Out: 580", desc: "Tìm hiểu các tiêu chuẩn thiết kế thực nghiệm công bằng và kiểm soát biến nhiễu.", dataId: "s3_res" },
+        { role: "supervisor", step: "Supervisor (Iter 2)", detail: "Chuyển tiếp luồng", desc: "Chuyển sang Analyst để phân tích.", dataId: "s3_sup2" },
+        { role: "analyst", step: "Analyst Agent", detail: "In: 780 / Out: 480", desc: "Phân tích điểm bất công của việc so sánh (như khác biệt về mức độ Prompt Engineering giữa 2 bên).", dataId: "s3_ana" },
+        { role: "supervisor", step: "Supervisor (Iter 3)", detail: "Chuyển tiếp luồng", desc: "Chuyển sang Writer viết bản thảo.", dataId: "s3_sup3" },
+        { role: "writer", step: "Writer Agent", detail: "In: 1120 / Out: 720", desc: "Soạn thảo kế hoạch kiểm thử nội bộ.", dataId: "s3_wri" },
+        { role: "supervisor", step: "Supervisor (Iter 4)", detail: "Kiểm duyệt vòng 1", desc: "Supervisor gửi sang Critic đóng vai trò Red-Team.", dataId: "s3_sup4" },
+        { role: "critic", step: "Critic (Red-Team)", detail: "In: 1540 / Out: 320", desc: "<strong>RED-TEAM REJECTED!</strong> Chỉ ra lỗi nghiêm trọng: Đồ thị chưa có phương án khống chế token budget của Single-Agent bằng kỹ thuật Generation Trunking.", dataId: "s3_cri" },
+        { role: "supervisor", step: "Supervisor (Iter 5)", detail: "Vòng sửa đổi", desc: "Nhận phản hồi REJECTED, route ngược về Writer để sửa đổi kế hoạch.", dataId: "s3_sup5" },
+        { role: "writer", step: "Writer (Revision)", detail: "In: 1720 / Out: 690", desc: "Cập nhật thiết kế thực nghiệm: Bổ sung cơ chế Generation Trunking ép Single-Agent sinh nhiều phương án để khớp Token Budget.", dataId: "s3_wri2" },
+        { role: "supervisor", step: "Supervisor (Iter 6)", detail: "Kiểm duyệt vòng 2", desc: "Supervisor gửi bản thảo đã sửa sang cho Critic duyệt lại.", dataId: "s3_sup6" },
+        { role: "critic", step: "Critic (Approval)", detail: "In: 2110 / Out: 150", desc: "<strong>STATUS: APPROVED.</strong> Mọi điểm yếu của Red-team đã được xử lý thỏa đáng.", dataId: "s3_cri2" },
+        { role: "supervisor", step: "Supervisor (Iter 7)", detail: "Kết thúc", desc: "Chốt và đóng luồng.", dataId: "s3_sup7" },
+        { role: "done", step: "Done Node", detail: "Hoàn thành", desc: "Báo cáo thực nghiệm tối ưu được ghi nhận.", dataId: "s3_done" }
+      ],
+      verdicts: [
+        { num: "1", title: "Cơ chế Red-Team thực chất", text: "Kịch bản này thể hiện sức mạnh tối đa của Critic khi đóng vai phản biện ác ý (Red-team), buộc Writer sửa lại thiết kế ngay lập tức giúp bản báo cáo cuối cùng vô cùng chặt chẽ." },
+        { num: "2", title: "Kiểm soát biến nhiễu", text: "Kế hoạch đề xuất kiểm soát thành công biến nhiễu Token bằng phương án Generation Trunking và so sánh công bằng về số lượt tự phản biện (inference loops)." },
+        { num: "3", title: "Độ trễ cao", text: "Trải qua 7 vòng lặp nên thời gian phản hồi kéo dài hơn 70s, chi phí tăng đáng kể." }
+      ],
+      outputs: {
+        multi: `<h1>Kế hoạch Thực nghiệm: So sánh Single-Call vs Multi-Agent</h1>
+<p><strong>Mục tiêu:</strong> Đo lường sự đóng góp thực tế của cấu trúc Multi-Agent tách biệt hoàn toàn khỏi yếu tố gia tăng thời gian suy luận (inference-time compute) và số lượng Token sử dụng.</p>
+
+<h2>1. Thiết lập So sánh Công bằng (Fair Comparison)</h2>
+<ul>
+  <li><strong>Ràng buộc Token Budget:</strong> Đảm bảo tổng số lượng Token (Input + Output) của hai bên là tương đương. Phía Single-Agent sẽ được áp dụng kỹ thuật sinh chuỗi lặp (Sequential Sampling) hoặc tạo nhiều phương án song song (N-best generation) để sử dụng hết ngân sách token tương đương Multi-Agent.</li>
+  <li><strong>Ràng buộc về Prompt Engineering:</strong> Single-Agent được trang bị hệ thống prompt tự kiểm lỗi (Self-Reflection) tương thích để đảm bảo tính cạnh tranh công bằng.</li>
+</ul>
+
+<h2>2. Báo cáo Red-Team (Thẩm định Phản biện)</h2>
+<p><em>Critic feedback (Iteration 4):</em> Việc so sánh trực tiếp một Agent đơn lẻ sinh văn bản 1 lần với một đồ thị đa tác nhân chạy lặp 5 lần là không khách quan. Nếu Single-Agent không được khống chế bằng Generation Trunking, kết quả kiểm thử sẽ vô nghĩa.</p>
+
+<h2>3. Thiết kế Thực nghiệm Điều chỉnh (Revised Design)</h2>
+<p>Thiết lập quy trình 3 giai đoạn điều chỉnh:
+1. Giai đoạn 1: Chạy kiểm thử tự do.
+2. Giai đoạn 2: Cân bằng Token Budget thông qua kỹ thuật ghép mẫu.
+3. Giai đoạn 3: Tính toán sự khác biệt có ý nghĩa thống kê (p-value).</p>`,
+        single: `<h2>Kế hoạch Thực nghiệm So sánh Mô hình</h2>
+<p><strong>1. Câu hỏi nghiên cứu:</strong> Mô hình nào thông minh hơn?</p>
+<p><strong>2. Cách đo lường:</strong> Cho cả hai mô hình trả lời cùng một câu hỏi phức tạp. So sánh xem bên nào viết hay hơn và dài hơn.</p>
+<p><strong>3. Nhược điểm:</strong> Hệ thống nhiều tác nhân có thể viết dài hơn vì nó gọi API nhiều lần, tuy nhiên rất khó để đo lường chính xác sự khác biệt này nếu không tính toán lượng tiền tiêu thụ.</p>`
+      },
+      tokens: "2,790",
+      cost: "$0.0029"
+    },
+    4: {
+      tag: "Prompt 4 — Survey Outline",
+      title: "Survey Paper Blueprint",
+      desc: "Xây dựng đề cương chi tiết cho bài báo tổng quan (survey paper) về các tác nhân AI hỗ trợ nghiên cứu khoa học.",
+      metrics: {
+        latency: { val: "54s", pct: 75, pctText: "54s", diff: "-150%", worse: true },
+        cost: { val: "$0.0020", pct: 80, pctText: "$0.0020", diff: "-300%", worse: true },
+        cite: { val: "100%", pct: 100, pctText: "100%", diff: "+150%", worse: false }
+      },
+      nodes: [
+        { role: "supervisor", step: "Supervisor (Iter 1)", detail: "Bắt đầu luồng", desc: "Supervisor điều luồng về Researcher.", dataId: "s4_sup1" },
+        { role: "researcher", step: "Researcher Agent", detail: "In: 320 / Out: 590", desc: "Tìm kiếm các bài báo tổng quan hiện có, phân tích các khung phân loại (taxonomy) phổ biến.", dataId: "s4_res" },
+        { role: "supervisor", step: "Supervisor (Iter 2)", detail: "Chuyển tiếp luồng", desc: "Route sang Analyst.", dataId: "s4_sup2" },
+        { role: "analyst", step: "Analyst Agent", detail: "In: 710 / Out: 440", desc: "Xác định các lỗ hổng khảo sát (như bỏ sót khía cạnh bảo mật dữ liệu khoa học), tối ưu tính phân hóa giữa các chương.", dataId: "s4_ana" },
+        { role: "supervisor", step: "Supervisor (Iter 3)", detail: "Chuyển tiếp luồng", desc: "Route sang Writer.", dataId: "s4_sup3" },
+        { role: "writer", step: "Writer Agent", detail: "In: 1080 / Out: 690", desc: "Soạn thảo Abstract mẫu và lập đề cương 6-8 phần không trùng lặp nội dung.", dataId: "s4_wri" },
+        { role: "supervisor", step: "Supervisor (Iter 4)", detail: "Chốt luồng", desc: "Chuyển tiếp sang Critic duyệt chất lượng.", dataId: "s4_sup4" },
+        { role: "critic", step: "Critic Agent", detail: "In: 1420 / Out: 190", desc: "Đánh giá sự mạch lạc giữa Abstract và đề cương chi tiết. Xác nhận cấu trúc đạt chuẩn học thuật. APPROVED.", dataId: "s4_cri" },
+        { role: "supervisor", step: "Supervisor (Iter 5)", detail: "Kết thúc", desc: "Supervisor đóng đồ thị.", dataId: "s4_sup5" },
+        { role: "done", step: "Done Node", detail: "Hoàn tất", desc: "Xuất file đề cương hoàn chỉnh.", dataId: "s4_done" }
+      ],
+      verdicts: [
+        { num: "1", title: "Abstract chất lượng cao", text: "Abstract viết bằng Multi-agent đạt chuẩn phong cách bài báo của các hội nghị lớn (ACL, NeurIPS) với động lực và định nghĩa rõ ràng." },
+        { num: "2", title: "Phân chia không chồng chéo", text: "Đề cương 7 chương được phân hóa nhiệm vụ rõ ràng, không có sự chồng chéo nội dung giữa chương khảo sát kiến trúc và chương khảo sát phương pháp đánh giá." },
+        { num: "3", title: "Single-Agent lỏng lẻo", text: "Bản Single-agent giống một danh sách bài viết blog chia sẻ kiến thức hơn là đề cương một bài báo khảo sát chuyên sâu." }
+      ],
+      outputs: {
+        multi: `<h1>Survey Blueprint: AI Agents for Research Assistance</h1>
+<p><strong>Abstract Draft:</strong> Trí tuệ nhân tạo dạng tác nhân (Agentic AI) đang định hình lại phương thức nghiên cứu khoa học. Bài báo này cung cấp khảo sát toàn diện về các kiến trúc tác nhân, phương pháp đánh giá hiệu năng và các bài toán mở trong việc hỗ trợ nghiên cứu khoa học...</p>
+
+<h2>Đề cương chi tiết (7 Chương cốt lõi)</h2>
+<ol>
+  <li><strong>Chương 1: Giới thiệu & Động lực:</strong> Định nghĩa tác nhân hỗ trợ nghiên cứu (RAs), sự tiến hóa từ RAG thô sơ đến đồ thị đa tác nhân phức tạp.</li>
+  <li><strong>Chương 2: Khảo sát Kiến trúc Tác nhân:</strong> Phân loại theo cấu trúc điều phối (Hierarchical, Peer-to-peer, Hub-and-spoke).</li>
+  <li><strong>Chương 3: Khảo sát Năng lực cốt lõi:</strong> Khả năng tra cứu, phản biện thông tin, sinh mã nguồn thực nghiệm.</li>
+  <li><strong>Chương 4: Các Phương pháp Đánh giá (Evaluation):</strong> So sánh các bộ benchmark hiện tại và khoảng trống đánh giá.</li>
+  <li><strong>Chương 5: Khoảng trống Đánh giá & Bài toán mở:</strong> Lỗ hổng trong việc đo lường tư duy phán đoán khoa học thực chất của AI.</li>
+  <li><strong>Chương 6: Đề xuất thiết kế Benchmark thế hệ tiếp theo:</strong> Cách xây dựng môi trường sandbox an toàn cho AI chạy code thực nghiệm.</li>
+  <li><strong>Chương 7: Kết luận & Định hướng tương lai.</strong></li>
+</ol>`,
+        single: `<h2>Đề cương bài viết Survey về AI Agent</h2>
+<p><strong>Tên bài viết:</strong> AI Agents for Research Assistance: Capabilities, Evaluation, and Open Problems</p>
+<p><strong>Abstract:</strong> Bài viết này viết về các ứng dụng của AI trong nghiên cứu khoa học. Chúng tôi chỉ ra các điểm mạnh và điểm yếu của AI agent hiện nay.</p>
+<p><strong>Mục lục bài viết:</strong></p>
+<ul>
+  <li>Phần 1: Giới thiệu chung về AI Agent</li>
+  <li>Phần 2: Các khả năng của AI (tóm tắt, tìm kiếm)</li>
+  <li>Phần 3: Cách mọi người đánh giá AI</li>
+  <li>Phần 4: Các khó khăn và bài toán chưa giải quyết được</li>
+  <li>Phần 5: Kết luận chung</li>
+</ul>`
+      },
+      tokens: "2,090",
+      cost: "$0.0020"
+    }
+  };
+
+  let activeTaskId = 1;
+  let activeOutputType = "multi";
+
+  function switchTask(taskId) {
+    activeTaskId = taskId;
+    
+    // Update active tab styles
+    document.querySelectorAll('.task-card').forEach((card, idx) => {
+      if (idx + 1 === taskId) {
+        card.classList.add('active');
+      } else {
+        card.classList.remove('active');
+      }
+    });
+
+    const data = DATA[taskId];
+
+    // Update Header
+    document.getElementById('taskTag').textContent = data.tag;
+    document.getElementById('taskTitle').textContent = data.title;
+    document.getElementById('taskDesc').textContent = data.desc;
+
+    // Update Gauge Telemetry (SVG Circle Stroke Dashoffset animations)
+    updateGauge('latencyFill', 'latencyVal', data.metrics.latency);
+    updateGauge('costFill', 'costVal', data.metrics.cost);
+    updateGauge('citeFill', 'citeVal', data.metrics.cite);
+
+    // Update Flowchart Graph Visualizer
+    const flowContainer = document.getElementById('flowchartNodes');
+    flowContainer.innerHTML = '';
+    data.nodes.forEach(node => {
+      const nodeEl = document.createElement('div');
+      nodeEl.className = 'flow-node';
+      nodeEl.innerHTML = `
+        <div class="node-icon ${node.role}">${getNodeIconChar(node.role)}</div>
+        <div class="node-content" onclick="openModal('${taskId}', '${node.dataId}')">
+          <div class="node-title">
+            <span>${node.step}</span>
+            <span class="node-meta">${node.detail}</span>
+          </div>
+          <div class="node-desc">${node.desc}</div>
+          <span class="click-hint" style="text-align:right">Chi tiết →</span>
+        </div>
+      `;
+      flowContainer.appendChild(nodeEl);
+    });
+
+    // Update Output Sandbox Content
+    toggleOutput(activeOutputType);
+
+    // Update Verdict List
+    const verdictContainer = document.getElementById('verdictInsights');
+    verdictContainer.innerHTML = '';
+    data.verdicts.forEach(item => {
+      const itemEl = document.createElement('div');
+      itemEl.className = 'insight-item';
+      itemEl.innerHTML = `
+        <div class="insight-item-num">${item.num}</div>
+        <div class="insight-item-text">
+          <strong>${item.title}</strong>
+          <p>${item.text}</p>
+        </div>
+      `;
+      verdictContainer.appendChild(itemEl);
+    });
+  }
+
+  function getNodeIconChar(role) {
+    switch(role) {
+      case 'supervisor': return '⚙️';
+      case 'researcher': return '🔍';
+      case 'analyst': return '📊';
+      case 'writer': return '✍️';
+      case 'critic': return '🛡️';
+      case 'done': return '🏁';
+      default: return '●';
+    }
+  }
+
+  function updateGauge(fillId, textId, metricData) {
+    const textEl = document.getElementById(textId);
+    textEl.textContent = metricData.val;
+
+    const fillEl = document.getElementById(fillId);
+    // Calculated based on circumference of circle (2 * pi * 36 = 226.19)
+    let percent = metricData.pct;
+    if (percent > 100) percent = 100;
+    const offset = 226.19 - (percent / 100) * 226.19;
+    fillEl.style.strokeDashoffset = offset;
+
+    const compareEl = fillEl.parentElement.parentElement.nextElementSibling.nextElementSibling;
+    compareEl.textContent = metricData.diff;
+    if (metricData.worse) {
+      compareEl.className = "gauge-compare worse";
+    } else {
+      compareEl.className = "gauge-compare";
+    }
+  }
+
+  function toggleOutput(type) {
+    activeOutputType = type;
+    const btnMulti = document.getElementById('tabBtnMulti');
+    const btnSingle = document.getElementById('tabBtnSingle');
+    const outputBox = document.getElementById('arenaOutputContent');
+
+    const data = DATA[activeTaskId];
+
+    if (type === 'multi') {
+      btnMulti.classList.add('active');
+      btnSingle.classList.remove('active');
+      outputBox.innerHTML = data.outputs.multi;
+      
+      document.getElementById('metaResolution').textContent = "Cao (Phân hóa vai trò)";
+      document.getElementById('metaTokens').textContent = data.tokens;
+      document.getElementById('metaCost').textContent = data.cost;
+    } else {
+      btnMulti.classList.remove('active');
+      btnSingle.classList.add('active');
+      outputBox.innerHTML = data.outputs.single;
+      
+      document.getElementById('metaResolution').textContent = "Thấp (Một bước suy luận)";
+      document.getElementById('metaTokens').textContent = "1,936";
+      document.getElementById('metaCost').textContent = "$0.0005";
+    }
+  }
+
+  // Modals for nodes detail (simulation of actual logs)
+  const MODAL_DETAILS = {
+    // Scenario 1: ResearchAgentBench
+    s1_sup1: {
+      badge: "Supervisor · Iter 1",
+      title: "Khởi động và Phân tuyến",
+      body: `<h3>Quyết định định tuyến (Supervisor Logic)</h3>
+      <p>Trạng thái <code>state.research_notes</code> hiện tại rỗng. Supervisor kích hoạt luồng đầu tiên là nghiên cứu.</p>
+      <div class="code-box">if not state.research_notes:
+    route_to = "researcher"</div>`
+    },
+    s1_res: {
+      badge: "Researcher Node",
+      title: "Thu thập & Tóm tắt nghiên cứu khoa học",
+      body: `<h3>Nhật ký thực thi</h3>
+      <p>Researcher tiến hành gọi API mock tìm kiếm các bộ benchmark về đánh giá phần mềm và lập trình. Thu thập được 5 bài báo khoa học. Trích lọc thông tin về SWE-bench và HELM.</p>
+      <h3>Prompt mẫu sử dụng</h3>
+      <div class="code-box">You are a research specialist. Gather all existing literature about benchmark evaluations for coding and academic tasks. Compile raw research notes.</div>`
+    },
+    s1_sup2: {
+      badge: "Supervisor · Iter 2",
+      title: "Kiểm tra ghi chú thô",
+      body: `<h3>Quyết định định tuyến</h3>
+      <p>Researcher đã điền thông tin vào <code>research_notes</code>. Supervisor rẽ luồng sang Analyst Agent để phản biện độc lập.</p>`
+    },
+    s1_ana: {
+      badge: "Analyst Node",
+      title: "Phân tích phản biện & Xác định khoảng trống kiến thức",
+      body: `<h3>Nhật ký thực thi</h3>
+      <p>Analyst đọc bản ghi chú thô dài ~2700 tokens, bóc tách các điểm yếu của benchmark. Phát hiện rằng hầu hết benchmark hiện có rất tốn chi phí chấm điểm của con người (expensive manual annotation).</p>
+      <h3>Nhận xét quan trọng (Flagged Gap)</h3>
+      <div class="code-box">[GAP IDENTIFIED]: Benchmark đề xuất cần giảm thiểu sự phụ thuộc vào đánh giá thủ công của con người bằng cách dùng LLM-as-a-judge có rubric kiểm soát chặt chẽ.</div>`
+    },
+    s1_sup3: {
+      badge: "Supervisor · Iter 3",
+      title: "Chuyển tiếp sang Soạn thảo",
+      body: `<h3>Quyết định định tuyến</h3>
+      <p>Bản phân tích phân biện đã ghi nhận. Supervisor gọi Writer để bắt đầu định hình văn bản báo cáo cuối cùng.</p>`
+    },
+    s1_wri: {
+      badge: "Writer Node",
+      title: "Soạn thảo Báo cáo Benchmark học thuật",
+      body: `<h3>Nhật ký thực thi</h3>
+      <p>Writer tổng hợp toàn bộ ghi chú của Researcher và các điểm cảnh báo của Analyst để viết tài liệu chuẩn hóa 10 chương bao quát đầy đủ mục tiêu, nhiệm vụ mẫu, và giới hạn.</p>`
+    },
+    s1_sup4: {
+      badge: "Supervisor · Iter 4",
+      title: "Gửi thẩm định chất lượng",
+      body: `<h3>Quyết định định tuyến</h3>
+      <p>Văn bản thô của Writer đã được sinh ra. Supervisor chuyển giao cho Critic kiểm duyệt trước khi đóng đồ thị.</p>`
+    },
+    s1_cri: {
+      badge: "Critic Node",
+      title: "Kiểm soát an toàn & Đánh giá Alignment",
+      body: `<h3>Kết quả kiểm duyệt</h3>
+      <p>Critic đối chiếu văn bản thô của Writer với yêu cầu hệ thống. Kiểm tra xem 12 nhiệm vụ mẫu đã có các bài stress-test chống AI gian lận chưa. Thấy đạt chuẩn.</p>
+      <div class="code-box">STATUS: APPROVED
+Mọi tiêu chuẩn về 10 phần văn bản và tính đối nghịch đều thỏa mãn. Không có hallucination so với tài liệu thô.</div>`
+    },
+    s1_sup5: {
+      badge: "Supervisor · Iter 5",
+      title: "Chốt báo cáo",
+      body: `<h3>Quyết định định tuyến</h3>
+      <p>Nhận tín hiệu APPROVED từ Critic. Supervisor chính thức ra lệnh đóng đồ thị: <code>route_to = "done"</code>.</p>`
+    },
+    s1_done: {
+      badge: "Done Node",
+      title: "Hoàn tất kịch bản 1",
+      body: `<p>Hệ thống LangGraph trả về trạng thái nghiên cứu cuối cùng với file văn bản chất lượng cao của Writer.</p>`
+    },
+
+    // Scenario 2: Research Briefing
+    s2_sup1: {
+      badge: "Supervisor · Iter 1",
+      title: "Khởi động và Phân tuyến",
+      body: `<p>Supervisor rẽ luồng sang Researcher để tìm kiếm tài liệu về hiệu suất Multi-agent.</p>`
+    },
+    s2_res: {
+      badge: "Researcher Node",
+      title: "Tổng hợp tài liệu đa tác nhân",
+      body: `<h3>Nhật ký thực thi</h3>
+      <p>Researcher thu thập thông tin về các bài báo của Microsoft (AutoGen) và Berkeley. Trích xuất lập luận ủng hộ (task decomposition) và phản đối (communication overhead).</p>`
+    },
+    s2_sup2: {
+      badge: "Supervisor · Iter 2",
+      title: "Phân luồng sang Analyst",
+      body: `<p>Chuyển thông tin thô sang Analyst để bóc tách các yếu tố gây nhiễu thực nghiệm.</p>`
+    },
+    s2_ana: {
+      badge: "Analyst Node",
+      title: "Phân biệt hiệu năng thực chất",
+      body: `<h3>Phản biện của Analyst</h3>
+      <p>Analyst phân tích sâu về Token Budget. Chỉ ra rằng nếu Single-Agent được cho phép lặp lại tự sửa lỗi cùng lượng token, chất lượng của nó sẽ tiệm cận Multi-Agent.</p>`
+    },
+    s2_sup3: {
+      badge: "Supervisor · Iter 3",
+      title: "Chuyển tiếp sang viết Briefing",
+      body: `<p>Chuyển sang Writer để soạn thảo các Speaking Notes cho cuộc họp khoa học.</p>`
+    },
+    s2_wri: {
+      badge: "Writer Node",
+      title: "Soạn thảo bản Speaking Notes",
+      body: `<h3>Nhật ký thực thi</h3>
+      <p>Writer sắp xếp thông tin theo đúng định dạng được yêu cầu: Core question, Main positions, Evidence, Methodological concerns, Proposed experiments.</p>`
+    },
+    s2_sup4: {
+      badge: "Supervisor · Iter 4",
+      title: "Hoàn thành trực tiếp",
+      body: `<p>Kịch bản này không yêu cầu Critic. Supervisor kết thúc luồng trực tiếp và xuất dữ liệu.</p>`
+    },
+    s2_done: {
+      badge: "Done Node",
+      title: "Hoàn tất kịch bản 2",
+      body: `<p>Briefing học thuật hoàn chỉnh được lưu vào trạng thái.</p>`
+    },
+
+    // Scenario 3: Single-Call vs Multi-Agent Plan
+    s3_sup1: {
+      badge: "Supervisor · Iter 1",
+      title: "Khởi động thực nghiệm",
+      body: `<p>Bắt đầu quy trình thiết kế kế hoạch so sánh công bằng. Supervisor chuyển luồng về Researcher.</p>`
+    },
+    s3_res: {
+      badge: "Researcher Node",
+      title: "Nghiên cứu tiêu chuẩn so sánh LLM",
+      body: `<p>Researcher thu thập thông tin về cách so sánh công bằng về token budget và prompt engineering.</p>`
+    },
+    s3_sup2: {
+      badge: "Supervisor · Iter 2",
+      title: "Chuyển phân tích",
+      body: `<p>Chuyển giao cho Analyst để phát hiện các biến nhiễu.</p>`
+    },
+    s3_ana: {
+      badge: "Analyst Node",
+      title: "Phân tích các lỗ hổng thực nghiệm",
+      body: `<p>Analyst phát hiện lỗ hổng: Nếu Single-call không có kỹ thuật Generation Trunking để sinh nhiều lần rồi tổng hợp, nó sẽ luôn yếu thế về lượng thông tin sinh ra.</p>`
+    },
+    s3_sup3: {
+      badge: "Supervisor · Iter 3",
+      title: "Chuyển viết kế hoạch",
+      body: `<p>Kích hoạt Writer viết kế hoạch thực nghiệm thô.</p>`
+    },
+    s3_wri: {
+      badge: "Writer Node",
+      title: "Biên soạn bản thảo kế hoạch thực nghiệm",
+      body: `<p>Writer phác thảo kế hoạch so sánh, đề xuất các metrics như Latency, Cost và Quality.</p>`
+    },
+    s3_sup4: {
+      badge: "Supervisor · Iter 4",
+      title: "Kích hoạt kiểm thử Red-team",
+      body: `<p>Supervisor chuyển bản thảo sang Critic đóng vai trò Red-Team để tấn công logic kế hoạch.</p>`
+    },
+    s3_cri: {
+      badge: "Critic (Red-Team)",
+      title: "Lỗ hổng nghiêm trọng bị phát hiện!",
+      body: `<p style="color:var(--danger); font-weight:700">RED-TEAM REJECTED STATUS!</p>
+      <p>Critic chỉ ra lỗi: Bản thảo chưa thiết lập phương án khống chế token budget cho Single-Agent bằng kỹ thuật Generation Trunking, dẫn tới so sánh không công bằng.</p>
+      <div class="code-box">STATUS: REJECTED
+Reason: Missing specific mechanism to balance token budgets for single-call baseline. Writer must implement generation sampling (Trunking).</div>`
+    },
+    s3_sup5: {
+      badge: "Supervisor · Iter 5",
+      title: "Yêu cầu sửa đổi khẩn cấp",
+      body: `<p>Supervisor ghi nhận trạng thái REJECTED và lập tức hướng luồng quay lại Writer để viết bản thảo sửa đổi.</p>
+      <div class="code-box">Supervisor Action: Route to writer for revision based on critic notes.</div>`
+    },
+    s3_wri2: {
+      badge: "Writer Node (Revision)",
+      title: "Bản sửa đổi kế hoạch thực nghiệm",
+      body: `<p>Writer cập nhật kế hoạch: Tích hợp Generation Trunking (yêu cầu Single-Agent sinh 3 lần độc lập để cân bằng lượng token tiêu tốn).</p>`
+    },
+    s3_sup6: {
+      badge: "Supervisor · Iter 6",
+      title: "Tái thẩm định chất lượng",
+      body: `<p>Gửi lại bản sửa đổi sang Critic để đánh giá tính cải thiện.</p>`
+    },
+    s3_cri2: {
+      badge: "Critic Node (Re-evaluation)",
+      title: "Thông qua bản sửa đổi",
+      body: `<p>Critic xác nhận bản thảo mới đã bổ sung đầy đủ cơ chế Generation Trunking và kiểm soát biến nhiễu.</p>
+      <div class="code-box">STATUS: APPROVED
+The token balancing mechanism has been added. The experiment plan is now rigorous.</div>`
+    },
+    s3_sup7: {
+      badge: "Supervisor · Iter 7",
+      title: "Kết thúc đồ thị",
+      body: `<p>Nhận trạng thái APPROVED. Đóng đồ thị.</p>`
+    },
+    s3_done: {
+      badge: "Done Node",
+      title: "Hoàn tất kịch bản 3",
+      body: `<p>Kế hoạch thực nghiệm tối ưu được trích xuất thành công.</p>`
+    },
+
+    // Scenario 4: Survey Paper Blueprint
+    s4_sup1: {
+      badge: "Supervisor · Iter 1",
+      title: "Bắt đầu luồng",
+      body: `<p>Supervisor rẽ luồng sang Researcher để tìm kiếm tài liệu khảo sát AI agent.</p>`
+    },
+    s4_res: {
+      badge: "Researcher Node",
+      title: "Khảo sát tài liệu AI Agent",
+      body: `<p>Researcher thu thập các bài báo khảo sát cũ và lập bảng khung phân loại (taxonomy).</p>`
+    },
+    s4_sup2: {
+      badge: "Supervisor · Iter 2",
+      title: "Chuyển phân tích",
+      body: `<p>Chuyển luồng sang Analyst.</p>`
+    },
+    s4_ana: {
+      badge: "Analyst Node",
+      title: "Phát hiện kẽ hở chương mục",
+      body: `<p>Analyst phát hiện: Các bài khảo sát cũ thường chồng chéo giữa chương định nghĩa kiến trúc và chương năng lực tác nhân.</p>`
+    },
+    s4_sup3: {
+      badge: "Supervisor · Iter 3",
+      title: "Chuyển viết đề cương",
+      body: `<p>Chuyển giao cho Writer viết Abstract và Outline.</p>`
+    },
+    s4_wri: {
+      badge: "Writer Node",
+      title: "Soạn thảo đề cương chi tiết",
+      body: `<p>Writer biên soạn Abstract mẫu và lập cấu trúc 7 chương mạch lạc, giải quyết triệt để vấn đề chồng chéo thông tin.</p>`
+    },
+    s4_sup4: {
+      badge: "Supervisor · Iter 4",
+      title: "Kiểm duyệt đề cương",
+      body: `<p>Supervisor gửi đề cương cho Critic duyệt.</p>`
+    },
+    s4_cri: {
+      badge: "Critic Node",
+      title: "Duyệt chất lượng đề cương",
+      body: `<p>Critic kiểm tra sự tương đồng, thấy đề cương phân tách rõ ràng và Abstract đạt chuẩn học thuật. APPROVED.</p>`
+    },
+    s4_sup5: {
+      badge: "Supervisor · Iter 5",
+      title: "Đóng đồ thị",
+      body: `<p>Supervisor kết thúc luồng.</p>`
+    },
+    s4_done: {
+      badge: "Done Node",
+      title: "Hoàn tất kịch bản 4",
+      body: `<p>Đề cương bài báo tổng quan được xuất thành công.</p>`
+    }
+  };
+
+  function openModal(taskId, dataId) {
+    const data = MODAL_DETAILS[dataId];
+    if (!data) return;
+
+    const overlay = document.getElementById('modalOverlay');
+    const badge = document.getElementById('modalBadge');
+    const title = document.getElementById('modalTitle');
+    const body = document.getElementById('modalBody');
+
+    badge.textContent = data.badge;
+    
+    // Custom colors for modal badge based on node type
+    if (data.badge.includes('Supervisor')) {
+      badge.style.cssText = "color: var(--purple); background: var(--purple-light); border: 1px solid rgba(124, 92, 246, 0.3)";
+    } else if (data.badge.includes('Researcher')) {
+      badge.style.cssText = "color: #0284c7; background: #e0f2fe; border: 1px solid rgba(14, 165, 233, 0.3)";
+    } else if (data.badge.includes('Analyst')) {
+      badge.style.cssText = "color: #b45309; background: var(--warning-light); border: 1px solid rgba(245, 158, 11, 0.3)";
+    } else if (data.badge.includes('Writer')) {
+      badge.style.cssText = "color: var(--success); background: var(--success-light); border: 1px solid rgba(16, 185, 129, 0.3)";
+    } else if (data.badge.includes('Critic')) {
+      badge.style.cssText = "color: var(--danger); background: #ffe4e6; border: 1px solid rgba(239, 68, 68, 0.3)";
+    } else {
+      badge.style.cssText = "color: #334155; background: #f1f5f9; border: 1px solid rgba(148, 163, 184, 0.3)";
+    }
+
+    title.textContent = data.title;
+    body.innerHTML = data.body;
+    overlay.classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+
+  function closeOnOverlay(e) {
+    if (e.target === document.getElementById('modalOverlay')) closeModal();
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  // Initialize page
+  switchTask(1);
+</script>
+</body>
+</html>
